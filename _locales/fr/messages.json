@@ -1,0 +1,8 @@
+{
+  "extName": { "message": "Lexo — correcteur et reformulation" },
+  "extDescription": { "message": "Corrige vos fautes de frappe, d'orthographe et de grammaire en temps réel et propose de meilleures formulations, dans toutes les langues, sur tous les sites." },
+  "cmdPanel": { "message": "Ouvrir le panneau Lexo du champ actif" },
+  "cmdRephrase": { "message": "Reformuler la sélection ou le paragraphe" },
+  "ctxRephrase": { "message": "Lexo : reformuler la sélection" },
+  "ctxCheck": { "message": "Lexo : ouvrir les corrections de ce champ" }
+}

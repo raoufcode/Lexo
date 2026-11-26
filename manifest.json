@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "short_name": "Lexo",
+  "description": "__MSG_extDescription__",
+  "version": "1.0.0",
+  "default_locale": "fr",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["storage", "contextMenus", "clipboardWrite"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background/sw.js",
+    "scripts": [
+      "vendor/anthropic-sdk.js",
+      "src/shared/lang.js",
+      "src/shared/text.js",
+      "src/shared/rules.js",
+      "src/shared/settings.js",
+      "src/background/checker.js",
+      "src/background/rephrase.js",
+      "src/background/main.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "src/shared/lang.js",
+        "src/shared/text.js",
+        "src/shared/settings.js",
+        "src/shared/i18n.js",
+        "src/content/fields.js",
+        "src/content/ui.js",
+        "src/content/app.js",
+        "src/content/main.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+  "action": {
+    "default_title": "Lexo",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "open-panel": {
+      "suggested_key": { "default": "Alt+Shift+L" },
+      "description": "__MSG_cmdPanel__"
+    },
+    "rephrase": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "__MSG_cmdRephrase__"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "lexo@raoufcode",
+      "strict_min_version": "121.0",
+      "data_collection_permissions": {
+        "required": ["websiteContent"]
+      }
+    }
+  }
+}

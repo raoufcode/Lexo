@@ -1,0 +1,8 @@
+{
+  "extName": { "message": "Lexo — spelling, grammar & rephrasing" },
+  "extDescription": { "message": "Fixes typos, spelling and grammar mistakes as you type and suggests better phrasings, in any language, on every website." },
+  "cmdPanel": { "message": "Open the Lexo panel for the active field" },
+  "cmdRephrase": { "message": "Rephrase the selection or paragraph" },
+  "ctxRephrase": { "message": "Lexo: rephrase selection" },
+  "ctxCheck": { "message": "Lexo: open corrections for this field" }
+}

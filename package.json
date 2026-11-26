@@ -1,0 +1,25 @@
+{
+  "name": "lexo",
+  "version": "1.0.0",
+  "description": "Extension Chrome/Firefox : correction orthographique et grammaticale en temps réel, détection automatique de la langue et reformulations.",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js",
+    "test:e2e": "node --test tests/e2e/*.test.js",
+    "build:vendor": "node scripts/build-vendor.mjs",
+    "package": "node scripts/package.mjs",
+    "lint:firefox": "npm run package && npx --yes web-ext@8 lint --source-dir dist/firefox"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raoufcode/lexo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/raoufcode/lexo/issues"
+  },
+  "homepage": "https://github.com/raoufcode/lexo#readme",
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
+    "esbuild": "^0.28.2"
+  },
+  "private": true
+}

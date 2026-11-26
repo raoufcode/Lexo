@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lexo</title>
+  <link rel="stylesheet" href="../pages/base.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header class="row">
+      <img class="logo" src="../../icons/icon-128.png" alt="">
+      <h1 data-i18n="o_title"></h1>
+      <span class="grow"></span>
+      <span id="saved" class="saved" data-i18n="o_saved" hidden></span>
+    </header>
+
+    <section id="welcome" class="welcome" hidden>
+      <h2 data-i18n="o_welcome_title"></h2>
+      <p data-i18n="o_welcome"></p>
+      <div id="perm" hidden>
+        <p data-i18n="p_perm"></p>
+        <button class="btn primary" id="grant" data-i18n="p_grant"></button>
+      </div>
+      <textarea id="try" rows="3">Bonjour, je vous envoi ce message pour vous dire que je suis aller au marcher hier.</textarea>
+    </section>
+
+    <section>
+      <h2 data-i18n="o_general"></h2>
+      <div class="grid">
+        <label><span data-i18n="o_ui_language"></span>
+          <select data-key="uiLanguage"><option value="fr">Français</option><option value="en">English</option></select></label>
+        <label><span data-i18n="o_language"></span><select data-key="language" id="language"></select></label>
+        <label><span data-i18n="o_default_language"></span><select data-key="defaultLanguage" id="defaultLanguage"></select></label>
+        <label><span data-i18n="o_level"></span>
+          <select data-key="level"><option value="default" data-i18n="o_level_default"></option><option value="picky" data-i18n="o_level_picky"></option></select></label>
+        <label><span data-i18n="o_underline"></span>
+          <select data-key="underlineStyle">
+            <option value="wavy" data-i18n="o_underline_wavy"></option>
+            <option value="solid" data-i18n="o_underline_solid"></option>
+            <option value="dotted" data-i18n="o_underline_dotted"></option>
+          </select></label>
+        <label><span><span data-i18n="o_debounce"></span> : <b id="debounceVal"></b></span>
+          <input type="range" min="200" max="1500" step="50" data-key="debounceMs" data-type="number"></label>
+      </div>
+      <h3 data-i18n="o_variants"></h3>
+      <div class="grid" id="variants"></div>
+    </section>
+
+    <section>
+      <h2 data-i18n="o_engine"></h2>
+      <p class="muted" data-i18n="o_server_help"></p>
+      <div class="grid">
+        <label class="wide"><span data-i18n="o_server"></span><input type="url" data-key="ltServer" spellcheck="false" data-lexo="off"></label>
+        <label><span data-i18n="o_username"></span><input type="text" data-key="ltUsername" autocomplete="off" spellcheck="false" data-lexo="off"></label>
+        <label><span data-i18n="o_apikey"></span><input type="password" data-key="ltApiKey" autocomplete="off"></label>
+      </div>
+      <div class="row"><button class="btn" id="testLt" data-i18n="o_test"></button><span id="testLtRes" class="muted"></span></div>
+    </section>
+
+    <section>
+      <h2 data-i18n="o_claude"></h2>
+      <p class="muted" data-i18n="o_claude_help"></p>
+      <div class="grid">
+        <label class="wide"><span data-i18n="o_claude_key"></span><input type="password" data-key="claudeApiKey" placeholder="sk-ant-…" autocomplete="off"></label>
+        <label><span data-i18n="o_claude_model"></span>
+          <select data-key="claudeModel">
+            <option value="claude-opus-5-5" data-i18n="o_model_opus"></option>
+            <option value="claude-sonnet-5-5" data-i18n="o_model_sonnet"></option>
+            <option value="claude-haiku-5-5" data-i18n="o_model_haiku"></option>
+          </select></label>
+        <label><span data-i18n="o_claude_effort"></span>
+          <select data-key="claudeEffort">
+            <option value="low" data-i18n="o_effort_low"></option>
+            <option value="medium" data-i18n="o_effort_medium"></option>
+            <option value="high" data-i18n="o_effort_high"></option>
+          </select></label>
+      </div>
+      <div class="row"><button class="btn" id="testClaude" data-i18n="o_test"></button><span id="testClaudeRes" class="muted"></span></div>
+    </section>
+
+    <section>
+      <h2 data-i18n="o_dictionary"></h2>
+      <p class="muted" data-i18n="o_dictionary_help"></p>
+      <textarea id="dictionary" rows="6" spellcheck="false" data-lexo="off"></textarea>
+    </section>
+
+    <section class="two">
+      <div>
+        <h2 data-i18n="o_rules"></h2>
+        <ul id="rules" class="list"></ul>
+      </div>
+      <div>
+        <h2 data-i18n="o_sites"></h2>
+        <ul id="sites" class="list"></ul>
+      </div>
+    </section>
+
+    <footer>
+      <p class="muted" data-i18n="o_privacy"></p>
+      <button class="btn" id="reset" data-i18n="o_reset"></button>
+    </footer>
+  </main>
+
+  <script src="../shared/lang.js"></script>
+  <script src="../shared/settings.js"></script>
+  <script src="../shared/i18n.js"></script>
+  <script src="options.js"></script>
+  <!-- Lexo actif sur cette page pour pouvoir l'essayer tout de suite -->
+  <script src="../shared/text.js"></script>
+  <script src="../content/fields.js"></script>
+  <script src="../content/ui.js"></script>
+  <script src="../content/app.js"></script>
+  <script src="../content/main.js"></script>
+</body>
+</html>

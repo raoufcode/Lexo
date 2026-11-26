@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lexo</title>
+  <link rel="stylesheet" href="../pages/base.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="row">
+    <img class="logo" src="../../icons/icon-48.png" alt="">
+    <strong class="brand">Lexo</strong>
+    <span class="grow"></span>
+    <label class="switch" data-i18n-title="p_enabled"><input type="checkbox" id="enabled"><span></span></label>
+  </header>
+
+  <div id="perm" class="notice" hidden>
+    <p data-i18n="p_perm"></p>
+    <button class="btn primary" id="grant" data-i18n="p_grant"></button>
+  </div>
+
+  <section class="card">
+    <div class="row">
+      <div class="grow">
+        <div data-i18n="p_site"></div>
+        <div class="muted" id="host">—</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="site"><span></span></label>
+    </div>
+    <p class="muted" id="internal" hidden data-i18n="p_internal"></p>
+  </section>
+
+  <section class="card">
+    <label for="language" data-i18n="p_language"></label>
+    <select id="language"></select>
+  </section>
+
+  <section class="stats row">
+    <strong id="fixes">0</strong><span class="muted" data-i18n="p_fixes"></span>
+  </section>
+
+  <footer>
+    <button class="btn" id="options" data-i18n="p_options"></button>
+    <p class="muted" data-i18n="p_shortcuts"></p>
+  </footer>
+
+  <script src="../shared/lang.js"></script>
+  <script src="../shared/settings.js"></script>
+  <script src="../shared/i18n.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

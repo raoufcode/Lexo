@@ -1,0 +1,12 @@
+body { width: 320px; padding: 14px; }
+header { margin-bottom: 12px; }
+.brand { font-size: 17px; }
+.card { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; background: var(--bg2); }
+.card label { display: block; margin-bottom: 6px; font-weight: 600; }
+.notice { border: 1px solid var(--warn); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+.notice p { margin: 0 0 8px; }
+.stats { margin: 6px 2px 12px; gap: 6px; }
+.stats strong { font-size: 18px; color: var(--accent); }
+footer .btn { width: 100%; }
+footer p { margin: 8px 0 0; text-align: center; }
+body.off .card, body.off .stats { opacity: .5; }
