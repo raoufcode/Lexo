@@ -115,3 +115,26 @@ test("requête périmée abandonnée", async () => {
   assert.equal(ra.stale, true);
   assert.equal(rb.status, "ok");
 });
+
+test("une correction locale certaine remplace une suggestion serveur absurde", async () => {
+  // Le serveur signale « àa » mais propose « aA » (cas réel).
+  G.fetch = async () => ({ ok: true, status: 200, json: async () => ({ matches: [{
+    offset: 15, length: 2, message: "Faute de frappe possible trouvée.", replacements: [{ value: "aA" }, { value: "à" }],
+    rule: { id: "FR_SPELLING_RULE", issueType: "misspelling", category: { id: "TYPOS" } } }] }) });
+  const text = "Bonjour, comme àa va ?";
+  const r = await new Checker().check({ text, fieldId: 1, seq: 1, forced: "fr" }, settings());
+  assert.equal(r.matches.length, 1);
+  assert.equal(r.matches[0].context, "àa");
+  assert.deepEqual(r.matches[0].replacements.map((x) => x.value), ["ça"]);
+});
+
+test("cleanReplacements écarte les suggestions absurdes mais garde les marques", () => {
+  const { cleanReplacements } = G.LexoChecker;
+  const v = (w, list) => cleanReplacements(w, list.map((value) => ({ value }))).map((x) => x.value);
+  assert.deepEqual(v("àa", ["aA", "à", "à", "àa"]), ["à"]);
+  assert.deepEqual(v("eT", ["eT", "et"]), ["et"]);
+  // marques légitimes conservées
+  assert.deepEqual(v("iphone", ["iPhone"]), ["iPhone"]);
+  assert.deepEqual(v("youtube", ["YouTube"]), ["YouTube"]);
+  assert.deepEqual(v("ios", ["iOS"]), ["iOS"]);
+});

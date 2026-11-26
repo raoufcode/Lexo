@@ -33,3 +33,20 @@ test("pas de faux positifs sur un texte correct", () => {
   assert.deepEqual(ids("Bonjour, je vous écris au sujet de la réunion. Merci beaucoup !"), []);
   assert.deepEqual(ids("Hello, I am writing about the meeting. Thanks a lot!", "en"), []);
 });
+
+test("fautes de frappe autour de « ça » (clavier AZERTY)", () => {
+  assert.deepEqual(ids("Bonjour, comme àa va ?"), [["LEXO_FR_CA", "àa", "ça"]]);
+  assert.deepEqual(ids("ca va bien ?"), [["LEXO_FR_CA", "ca", "ça"]]);
+  assert.deepEqual(ids("Salut, sa va ?"), [["LEXO_FR_CA", "sa", "ça"]]);
+  assert.deepEqual(ids("sa me fait plaisir"), [["LEXO_FR_CA", "sa", "ça"]]);
+  assert.deepEqual(ids("C'est comme sa."), [["LEXO_FR_CA", "sa", "ça"]]);
+  assert.deepEqual(ids("Merci. ca marche"), [["LEXO_FR_CA", "ca", "Ça"]]);
+  assert.deepEqual(ids("Ca va"), [["LEXO_FR_CA", "Ca", "Ça"]]);
+  // pas de faux positifs
+  assert.deepEqual(ids("Il a perdu sa valise."), []);
+  assert.deepEqual(ids("Il est venu çà et là."), []);
+  assert.deepEqual(ids("Le CA a augmenté de 10 %."), []);
+  assert.deepEqual(ids("Ça va très bien, merci."), []);
+  // règle propre au français
+  assert.deepEqual(ids("ca va", "en"), []);
+});

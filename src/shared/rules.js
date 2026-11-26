@@ -29,6 +29,46 @@
     "so", "no", "non", "si", "oui", "yes", "bla", "hi", "hey", "go", "well",
   ]);
 
+  // ---------------------------------------------------------------------------
+  // Fautes de frappe françaises très fréquentes, corrigées avec certitude.
+  // Elles priment sur les suggestions du serveur (souvent absurdes pour ces
+  // fautes clavier, ex. « àa » -> « aA »). Sur un clavier AZERTY, ç (touche 9)
+  // et à (touche 0) sont voisins, d'où « àa », « cà »…
+  // ---------------------------------------------------------------------------
+  const L = "\\p{L}";
+  // Formes qui ne sont jamais des mots français : toujours « ça ».
+  const NEVER_WORDS = "àa|cà|sà|çà(?!\\s+et\\s+là)|ca(?![.\\-])";
+  // « sa » n'est une faute que devant un verbe ou un pronom.
+  const CA_CONTEXT = "va|vas|allait|ira|irait|vient|venait|fait|faisait|fera|ferait|marche|marchait|suffit|suffira|dépend|depend|dépendra|roule|passe|passera|craint|change|m'|t'|s'|me|te|nous|vous|lui|leur|y|n'|ne|se|serait|sera|devrait|peut|pourrait|doit|reste|commence|existe|arrive|compte|sert|coûte|coute";
+  const RE_CA_NEVER = new RegExp(`(?<![${L}'’])(${NEVER_WORDS})(?![${L}'’])`, "giu");
+  const RE_SA_VERB = new RegExp(`(?<![${L}'’])(sa)(?=\\s+(?:${CA_CONTEXT})(?![${L}]))`, "giu");
+  const RE_COMME_SA = new RegExp(`(?<![${L}])(comme|c'est|c’est|pour|avec|de)\\s+(sa)(?=\\s*(?:[.!?,;:…]|$))`, "giu");
+
+  function frenchSlips(text) {
+    const out = [];
+    const push = (offset, word) => {
+      const fixed = /^\p{Lu}/u.test(word) ? "Ça" : "ça";
+      if (word === fixed) return;
+      if (out.some((m) => m.offset === offset)) return;
+      out.push(make("LEXO_FR_CA", offset, word.length,
+        `« ${word} » : faute de frappe probable, vouliez-vous écrire « ${fixed} » ?`,
+        [fixed], "misspelling", "Faute de frappe", true));
+    };
+    let m;
+    RE_CA_NEVER.lastIndex = 0;
+    while ((m = RE_CA_NEVER.exec(text))) {
+      // « ca » seul peut être une abréviation (« ca 1900 ») : on exige un mot autour.
+      if (/^ca$/i.test(m[1]) && /\d/.test(text.slice(m.index + 2, m.index + 5))) continue;
+      if (m[1] === "CA") continue; // sigle (chiffre d'affaires, conseil d'administration)
+      push(m.index, m[1]);
+    }
+    RE_SA_VERB.lastIndex = 0;
+    while ((m = RE_SA_VERB.exec(text))) push(m.index, m[1]);
+    RE_COMME_SA.lastIndex = 0;
+    while ((m = RE_COMME_SA.exec(text))) push(m.index + m[0].length - m[2].length, m[2]);
+    return out;
+  }
+
   function msgs(lang) {
     return MSG[String(lang || "fr").slice(0, 2)] || MSG.en;
   }
@@ -42,6 +82,7 @@
     const M = msgs(lang);
     const out = [];
     const base = String(lang || "").slice(0, 2);
+    if (base === "fr") out.push(...frenchSlips(text));
 
     // 1. Mot répété : « le le », « the the »
     const reRep = /(^|[^\p{L}\p{N}'’])([\p{L}'’]{2,})(\s+)(\2)(?=$|[^\p{L}\p{N}'’])/giu;
@@ -84,14 +125,17 @@
         const word = m[3];
         const offset = m.index + 1 + m[2].length;
         const fixed = word.charAt(0).toUpperCase() + word.slice(1);
+        const slip = out.find((x) => x.rule.id === "LEXO_FR_CA" && x.offset === offset);
+        if (slip) { slip.replacements = [{ value: "Ça" }]; continue; }
         out.push(make("LEXO_SENTENCE_CAPITAL", offset, word.length, M.capital, [fixed], "typographical", M.cat.capital));
       }
     }
-    return out;
+    return out.sort((a, b) => a.offset - b.offset);
   }
 
-  function make(id, offset, length, message, replacements, issueType, category) {
+  function make(id, offset, length, message, replacements, issueType, category, priority) {
     return {
+      priority: !!priority,
       offset, length, message, shortMessage: "",
       replacements: replacements.map((value) => ({ value })),
       rule: { id, issueType, category: { id: "LEXO", name: category } },
@@ -99,7 +143,7 @@
     };
   }
 
-  const LexoRules = { check };
+  const LexoRules = { check, frenchSlips };
   root.LexoRules = LexoRules;
   if (typeof module !== "undefined" && module.exports) module.exports = LexoRules;
 })(typeof globalThis !== "undefined" ? globalThis : this);

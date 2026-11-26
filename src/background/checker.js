@@ -229,6 +229,7 @@
           if (disabled.has(m.rule.id)) continue;
           if (isSpelling(m) && dict.has(word.toLowerCase())) continue;
           all.push(Object.assign({}, m, {
+            replacements: cleanReplacements(word, m.replacements || []),
             offset: item.p.start + m.offset,
             context: word,
             lang: item.lang,
@@ -316,14 +317,34 @@
 
   /** Les erreurs du serveur priment ; on ajoute les locales sans chevauchement. */
   function mergeMatches(remote, local) {
-    const out = remote.slice();
+    const overlaps = (a, b) => a.offset < b.offset + b.length && b.offset < a.offset + a.length;
+    // Les corrections locales « certaines » remplacent les erreurs serveur qu'elles recouvrent.
+    const sure = local.filter((l) => l.priority);
+    const out = remote.filter((r) => !sure.some((l) => overlaps(l, r)));
     for (const l of local) {
-      const overlap = remote.some((r) => l.offset < r.offset + r.length && r.offset < l.offset + l.length);
-      if (!overlap) out.push(l);
+      if (l.priority || !out.some((r) => overlaps(l, r))) out.push(l);
     }
     return out.sort((a, b) => a.offset - b.offset);
   }
 
-  root.LexoChecker = { Checker, detectLanguage, normalizeServer, mergeMatches, isSpelling, LRU };
+  /**
+   * Retire les suggestions absurdes (ex. « aA » pour « àa ») : très courte
+   * suggestion à casse incohérente, doublons, suggestion identique au mot.
+   */
+  function cleanReplacements(word, reps) {
+    const camel = /\p{Ll}\p{Lu}/u;
+    const seen = new Set();
+    return reps.filter((r) => {
+      const v = r.value;
+      if (v === word || seen.has(v)) return false;
+      seen.add(v);
+      // Noms de marque légitimes (iPhone, YouTube, iOS) conservés : on n'écarte
+      // que les très courtes suggestions à casse incohérente (« aA », « eT »).
+      if (camel.test(v) && !camel.test(word) && v.length <= 3 && v.toLowerCase() !== word.toLowerCase()) return false;
+      return true;
+    });
+  }
+
+  root.LexoChecker = { Checker, detectLanguage, normalizeServer, mergeMatches, cleanReplacements, isSpelling, LRU };
   if (typeof module !== "undefined" && module.exports) module.exports = root.LexoChecker;
 })(typeof globalThis !== "undefined" ? globalThis : this);
