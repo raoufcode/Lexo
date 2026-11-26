@@ -59,25 +59,72 @@
       <div class="row"><button class="btn" id="testLt" data-i18n="o_test"></button><span id="testLtRes" class="muted"></span></div>
     </section>
 
-    <section>
-      <h2 data-i18n="o_claude"></h2>
-      <p class="muted" data-i18n="o_claude_help"></p>
+    <section id="rephrase">
+      <h2 data-i18n="o_rephrase"></h2>
+      <p class="muted" data-i18n="o_rephrase_help"></p>
       <div class="grid">
-        <label class="wide"><span data-i18n="o_claude_key"></span><input type="password" data-key="claudeApiKey" placeholder="sk-ant-…" autocomplete="off"></label>
-        <label><span data-i18n="o_claude_model"></span>
-          <select data-key="claudeModel">
-            <option value="claude-opus-5-5" data-i18n="o_model_opus"></option>
-            <option value="claude-sonnet-5-5" data-i18n="o_model_sonnet"></option>
-            <option value="claude-haiku-5-5" data-i18n="o_model_haiku"></option>
-          </select></label>
-        <label><span data-i18n="o_claude_effort"></span>
-          <select data-key="claudeEffort">
-            <option value="low" data-i18n="o_effort_low"></option>
-            <option value="medium" data-i18n="o_effort_medium"></option>
-            <option value="high" data-i18n="o_effort_high"></option>
+        <label class="wide"><span data-i18n="o_provider"></span>
+          <select data-key="rephraseProvider" id="provider">
+            <option value="auto" data-i18n="o_provider_auto"></option>
+            <option value="gemini" data-i18n="o_provider_gemini"></option>
+            <option value="ollama" data-i18n="o_provider_ollama"></option>
+            <option value="chrome" data-i18n="o_provider_chrome"></option>
+            <option value="claude" data-i18n="o_provider_claude"></option>
           </select></label>
       </div>
-      <div class="row"><button class="btn" id="testClaude" data-i18n="o_test"></button><span id="testClaudeRes" class="muted"></span></div>
+      <ul class="status" id="providerStatus"></ul>
+
+      <div class="sub-block">
+        <h3>Google Gemini — <span data-i18n="o_free"></span></h3>
+        <ol class="steps">
+          <li><span data-i18n="o_gemini_step1"></span> <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a></li>
+          <li data-i18n="o_gemini_step2"></li>
+          <li data-i18n="o_gemini_step3"></li>
+        </ol>
+        <div class="grid">
+          <label class="wide"><span data-i18n="o_gemini_key"></span><input type="password" data-key="geminiApiKey" placeholder="AIza…" autocomplete="off"></label>
+          <label><span data-i18n="o_model"></span><input type="text" data-key="geminiModel" spellcheck="false" data-lexo="off"></label>
+        </div>
+        <p class="muted" data-i18n="o_gemini_privacy"></p>
+      </div>
+
+      <div class="sub-block">
+        <h3>Ollama — <span data-i18n="o_free_local"></span></h3>
+        <ol class="steps">
+          <li><span data-i18n="o_ollama_step1"></span> <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a></li>
+          <li><span data-i18n="o_ollama_step2"></span> <code>ollama pull mistral</code></li>
+          <li data-i18n="o_ollama_step3"></li>
+        </ol>
+        <div class="grid">
+          <label><span data-i18n="o_ollama_url"></span><input type="url" data-key="ollamaUrl" spellcheck="false" data-lexo="off"></label>
+          <label><span data-i18n="o_model"></span>
+            <span class="row"><input type="text" data-key="ollamaModel" id="ollamaModel" list="ollamaModels" spellcheck="false" data-lexo="off">
+            <button class="btn" id="ollamaRefresh" type="button" data-i18n-title="o_ollama_refresh">↻</button></span>
+            <datalist id="ollamaModels"></datalist></label>
+        </div>
+      </div>
+
+      <details class="sub-block">
+        <summary><h3>Claude (Anthropic) — <span data-i18n="o_paid"></span></h3></summary>
+        <p class="muted" data-i18n="o_claude_help"></p>
+        <div class="grid">
+          <label class="wide"><span data-i18n="o_claude_key"></span><input type="password" data-key="claudeApiKey" placeholder="sk-ant-…" autocomplete="off"></label>
+          <label><span data-i18n="o_claude_model"></span>
+            <select data-key="claudeModel">
+              <option value="claude-opus-5-5" data-i18n="o_model_opus"></option>
+              <option value="claude-sonnet-5-5" data-i18n="o_model_sonnet"></option>
+              <option value="claude-haiku-5-5" data-i18n="o_model_haiku"></option>
+            </select></label>
+          <label><span data-i18n="o_claude_effort"></span>
+            <select data-key="claudeEffort">
+              <option value="low" data-i18n="o_effort_low"></option>
+              <option value="medium" data-i18n="o_effort_medium"></option>
+              <option value="high" data-i18n="o_effort_high"></option>
+            </select></label>
+        </div>
+      </details>
+
+      <div class="row"><button class="btn primary" id="testRephrase" data-i18n="o_test"></button><span id="testRephraseRes" class="muted"></span></div>
     </section>
 
     <section>

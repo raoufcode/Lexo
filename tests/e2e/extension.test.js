@@ -163,15 +163,42 @@ test("input simple et champ mot de passe ignoré", async () => {
   await page.close();
 });
 
-test("reformulation sans clé : invitation à configurer", async () => {
+test("reformulation sans service d'IA : version corrigée + invitation gratuite", async () => {
   const page = await openPage();
   await page.click("#ta");
-  await page.keyboard.type("Bonjour à tous");
+  await page.keyboard.type("Je suis aller au marcher hier.");
+  await waitUnderlines(page, 2);
   await page.keyboard.press("Alt+Shift+R");
   await page.waitForFunction(() => {
     const p = document.querySelector("lexo-ui")?.shadowRoot?.querySelector(".panel");
-    return p && /clé API/.test(p.innerText);
-  }, null, { timeout: 4000 });
-  await page.screenshot({ path: path.join(SHOTS, "5-rephrase-nokey.png") });
+    return p && /gratuites/i.test(p.innerText) && /allé au marché/.test(p.innerText);
+  }, null, { timeout: 6000 }).catch(async (e) => {
+    console.log("PANEL:", await page.evaluate(() => document.querySelector("lexo-ui")?.shadowRoot?.querySelector(".panel")?.innerText));
+    throw e;
+  });
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: path.join(SHOTS, "5-rephrase-free.png") });
   await page.close();
+});
+
+test("reformulation gratuite avec Ollama : proposer puis remplacer", async () => {
+  await sw.evaluate((url) => chrome.storage.local.set({ ollamaUrl: url }), `http://127.0.0.1:${srv.port}`);
+  try {
+    const page = await openPage();
+    await page.click("#ta");
+    await page.keyboard.type("Je suis aller au marcher hier.");
+    await page.keyboard.press("Alt+Shift+R");
+    await page.waitForFunction(() => {
+      const p = document.querySelector("lexo-ui")?.shadowRoot?.querySelector(".panel");
+      return p && /Je me suis rendu au marché hier\./.test(p.innerText);
+    }, null, { timeout: 8000 });
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: path.join(SHOTS, "6-rephrase-ollama.png") });
+    // « Remplacer » sous la variante « Formel » (2e bloc)
+    await page.evaluate(() => document.querySelector("lexo-ui").shadowRoot.querySelectorAll('[data-a="use"]')[1].click());
+    await page.waitForFunction(() => document.querySelector("#ta").value === "Je me suis rendu au marché hier.");
+    await page.close();
+  } finally {
+    await sw.evaluate(() => chrome.storage.local.set({ ollamaUrl: "http://localhost:11434" }));
+  }
 });

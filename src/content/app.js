@@ -410,7 +410,6 @@
         text: this.text,
         empty: !this.text.trim(),
         readonly: false,
-        hasKey: !!this.app.settings.claudeApiKey,
         rephrase: Object.assign({}, p.rephrase, { source: p.source.kind === "selection" ? "selection" : p.source.kind }),
         rephraseText: p.source.text,
       };
@@ -448,12 +447,32 @@
       if (res && res.ok) {
         p.rephrase.state = "done";
         p.rephrase.result = res.result;
+      } else if (res && res.code === "no_provider") {
+        // Aucun fournisseur d'IA : on propose au moins la version corrigée.
+        p.rephrase.state = "done";
+        p.rephrase.result = this.localCorrection(p.source);
       } else {
         p.rephrase.state = "error";
         p.rephrase.code = knownError(res && res.code);
         p.rephrase.message = res && res.message;
       }
       this.renderPanel();
+    }
+
+    /** Version corrigée calculée sans IA, à partir des corrections détectées. */
+    localCorrection(src) {
+      let out = src.text;
+      const inside = this.matches
+        .filter((m) => m.replacements && m.replacements.length && m.offset >= src.start && m.offset + m.length <= src.end)
+        .sort((a, b) => b.offset - a.offset);
+      let last = Infinity;
+      for (const m of inside) {
+        if (m.offset + m.length > last) continue;
+        const o = m.offset - src.start;
+        out = out.slice(0, o) + m.replacements[0].value + out.slice(o + m.length);
+        last = m.offset;
+      }
+      return { corrected: out, explanation: "", suggestions: [], local: true, provider: "local" };
     }
 
     useRephrase(txt) {
@@ -483,7 +502,7 @@
   }
 
   function knownError(code) {
-    const known = ["empty", "too_long", "no_key", "auth", "rate_limited", "bad_request", "offline", "api", "refusal", "parse", "sdk_missing", "internal", "context"];
+    const known = ["empty", "too_long", "no_key", "no_provider", "unavailable", "ollama_origin", "ollama_model", "auth", "rate_limited", "bad_request", "offline", "api", "refusal", "parse", "sdk_missing", "internal", "context"];
     return known.includes(code) ? code : "api";
   }
 
@@ -533,7 +552,7 @@
     model() {
       return {
         tab: "rephrase", readonly: true, lang: this.lang, langForced: false, status: "ok",
-        matches: [], text: this.text, hasKey: !!this.app.settings.claudeApiKey,
+        matches: [], text: this.text,
         rephrase: Object.assign({ source: "selection" }, this.state), rephraseText: this.text,
       };
     }
@@ -549,7 +568,7 @@
         disableSite: () => {},
         options: () => this.app.send({ type: "lexo:open-options" }),
       });
-      if (this.app.settings.claudeApiKey) this.run();
+      this.run();
     }
     render() { this.app.ui.renderPanel(this.model()); }
     async run() {
@@ -558,6 +577,7 @@
       const res = await this.app.send({ type: "lexo:rephrase", text: this.text, tone: this.state.tone, lang: this.lang });
       if (this.app.readonly !== this) return;
       if (res && res.ok) { this.state.state = "done"; this.state.result = res.result; }
+      else if (res && res.code === "no_provider") { this.state.state = "done"; this.state.result = { corrected: this.text, explanation: "", suggestions: [], local: true }; }
       else { this.state.state = "error"; this.state.code = knownError(res && res.code); }
       this.render();
     }

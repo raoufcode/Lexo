@@ -19,7 +19,7 @@
   - bleu : style
 - **Corrige en un clic** : survolez ou cliquez sur un mot souligné, choisissez la suggestion. Le **Ctrl+Z** du site continue de fonctionner.
 - **Détecte la langue automatiquement**, y compris paragraphe par paragraphe dans un texte qui mélange les langues (30 langues prises en charge : français, anglais, espagnol, allemand, italien, portugais, néerlandais, arabe, russe, ukrainien, polonais…). Le **français est la langue par défaut** quand la détection hésite (texte très court).
-- **Propose de meilleures formulations** (Claude d'Anthropic) : version corrigée + 3 reformulations dans le ton choisi (naturel, formel, amical, concis, développé, convaincant), à appliquer en un clic.
+- **Propose de meilleures formulations**, **gratuitement** : version corrigée + 3 reformulations dans le ton choisi (naturel, formel, amical, concis, développé, convaincant), à appliquer en un clic. Services au choix : Google Gemini (clé gratuite), Ollama (IA locale gratuite), IA intégrée à Chrome, ou Claude (payant, facultatif).
 - **Badge** en bas à droite du champ : nombre de suggestions, langue détectée, état (vérification en cours, hors ligne…). Un clic ouvre le **panneau** : liste des corrections, « Tout corriger », reformulation, changement de langue.
 - **Dictionnaire personnel**, règles désactivables, désactivation par site, mode « exigeant ».
 - Interface **en français par défaut** (anglais disponible), thème clair et sombre.
@@ -49,14 +49,29 @@
 
 > Pour une installation permanente sur Firefox, l'extension doit être signée par Mozilla (dépôt sur addons.mozilla.org, éventuellement en mode « non listé »). `npm run package` produit les archives prêtes à envoyer.
 
-### Activer les reformulations (facultatif)
+### Activer les reformulations gratuites (facultatif)
 
-Les corrections fonctionnent sans configuration. Pour les reformulations :
+Les corrections fonctionnent sans configuration. Sans service d'IA, l'onglet *Reformuler* propose déjà la **version corrigée**. Pour obtenir aussi des **reformulations**, choisissez l'une de ces options gratuites dans **Réglages de Lexo → Reformulations** :
 
-1. Créez une clé API sur [console.anthropic.com](https://console.anthropic.com/).
-2. Ouvrez les **Réglages de Lexo** → *Reformulations (Claude)* → collez la clé → **Tester**.
+**Option 1 — Google Gemini (gratuit, 2 minutes, sans carte bancaire)**
+1. Ouvrez [aistudio.google.com/apikey](https://aistudio.google.com/apikey) avec un compte Google.
+2. Cliquez sur **Create API key** et copiez la clé (`AIza…`).
+3. Collez-la dans *Clé API Gemini*, puis cliquez sur **Tester**.
 
-Le modèle par défaut est **Claude Opus 5.5** avec l'effort « Rapide ». Pour des réponses encore plus rapides, choisissez **Claude Haiku 5.5** dans les réglages.
+> Avec le palier gratuit, Google peut utiliser les textes envoyés pour améliorer ses produits, et le nombre de requêtes par minute et par jour est limité.
+
+**Option 2 — Ollama (gratuit, 100 % privé, fonctionne hors ligne)**
+1. Installez [Ollama](https://ollama.com/download) sur votre ordinateur.
+2. Dans un terminal : `ollama pull mistral` (environ 4 Go ; modèle performant en français).
+3. Laissez Ollama lancé, puis cliquez sur **Tester** dans les réglages de Lexo.
+
+> Si le test indique qu'Ollama refuse la connexion, définissez la variable d'environnement `OLLAMA_ORIGINS=chrome-extension://*,moz-extension://*` puis relancez Ollama. Il faut un ordinateur avec au moins 8 Go de mémoire.
+
+**Option 3 — IA intégrée à Chrome** : sur les versions récentes de Chrome et les ordinateurs compatibles, Lexo utilise automatiquement le modèle intégré au navigateur (Gemini Nano), sans clé ni réseau, s'il est déjà téléchargé et prend en charge la langue du texte.
+
+En mode **Automatique** (par défaut), Lexo utilise le premier service prêt : IA de Chrome → Gemini → Ollama → Claude. Si l'un échoue (quota atteint…), il passe au suivant.
+
+*Claude (Anthropic)* reste disponible comme option **payante** dans la même section.
 
 ## Comment ça marche
 
@@ -68,7 +83,8 @@ Le modèle par défaut est **Claude Opus 5.5** avec l'effort « Rapide ». Pour 
  │   la frappe (diff)           │ ◀───────────── │ lots par langue → LanguageTool (/v2/check)  │
  │ soulignements, carte, badge, │   erreurs       │ limiteur de débit, abandon des requêtes     │
  │   panneau (Shadow DOM fermé) │                 │   périmées, règles locales hors ligne       │
- └──────────────────────────────┘                 │ reformulations → API Claude (SDK officiel)  │
+ └──────────────────────────────┘                 │ reformulations → Gemini, Ollama, Chrome,    │
+                                                  │   Claude (au choix, repli automatique)      │
                                                   └─────────────────────────────────────────────┘
 ```
 
@@ -98,8 +114,8 @@ Lexo utilise [LanguageTool](https://languagetool.org) :
 
 ## Confidentialité
 
-- Le texte des champs est envoyé **uniquement** au serveur LanguageTool choisi, et à l'API Claude **seulement** quand vous demandez une reformulation.
-- Votre clé API reste dans le stockage local du navigateur et n'est envoyée qu'à `api.anthropic.com`.
+- Le texte des champs est envoyé **uniquement** au serveur LanguageTool choisi, et au service de reformulation choisi **seulement** quand vous demandez une reformulation (avec Ollama ou l'IA de Chrome, rien ne quitte votre ordinateur).
+- Vos clés API restent dans le stockage local du navigateur et ne sont envoyées qu'au service correspondant.
 - Lexo ne collecte aucune donnée et n'a aucun serveur propre.
 
 ## Développement
@@ -120,7 +136,7 @@ Les tests de bout en bout utilisent un faux serveur LanguageTool local (`tests/e
 ```
 manifest.json            Manifest V3 commun Chrome + Firefox
 src/shared/              Modules sans DOM : langues, texte, règles locales, réglages, traductions
-src/background/          Moteur de vérification, reformulation (Claude), routage des messages
+src/background/          Moteur de vérification, reformulation (Gemini, Ollama, Chrome, Claude), routage
 src/content/             Adaptateurs de champs, interface (Shadow DOM), contrôleur
 src/popup/, src/options/ Fenêtre de l'icône et page des réglages
 vendor/anthropic-sdk.js  SDK officiel Anthropic empaqueté (généré par npm run build:vendor)

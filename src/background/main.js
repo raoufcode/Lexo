@@ -15,6 +15,7 @@
     settingsPromise = LexoSettings.load();
     const affectsCache = ["ltServer", "ltApiKey", "ltUsername", "variants", "level", "defaultLanguage"];
     if (Object.keys(patch).some((k) => affectsCache.includes(k))) checker.clearCache();
+    if ("ollamaUrl" in patch) LexoRephrase.resetProbe();
   });
 
   async function handle(msg, sender) {
@@ -34,10 +35,20 @@
         } catch (e) {
           return { ok: false, code: e.code || "api", message: e.message };
         }
-      case "lexo:test-claude":
+      case "lexo:test-rephrase":
         try {
           const s = Object.assign({}, settings, msg.override || {});
-          return Object.assign({ ok: true }, await LexoRephrase.testKey(s));
+          LexoRephrase.resetProbe();
+          return Object.assign({ ok: true }, await LexoRephrase.test(s, msg.provider));
+        } catch (e) {
+          return { ok: false, code: e.code || "api", message: e.message };
+        }
+      case "lexo:rephrase-status":
+        LexoRephrase.resetProbe();
+        return { ok: true, status: await LexoRephrase.status(Object.assign({}, settings, msg.override || {})) };
+      case "lexo:ollama-models":
+        try {
+          return { ok: true, models: await LexoRephrase.ollamaModels(Object.assign({}, settings, msg.override || {})) };
         } catch (e) {
           return { ok: false, code: e.code || "api", message: e.message };
         }

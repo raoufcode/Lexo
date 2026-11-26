@@ -413,10 +413,6 @@
 
     _rephraseBody(model) {
       const r = model.rephrase || {};
-      if (!model.hasKey) {
-        return `<div class="empty"><div class="big">🪄</div>${esc(T("rephraseNeedsKey"))}<br><br>
-          <button class="primary" data-a="options">${esc(T("configure"))}</button></div>`;
-      }
       const tones = TONES.map((t) => `<button class="tone ${r.tone === t ? "on" : ""}" data-a="tone" data-v="${t}">${esc(T("tone_" + t))}</button>`).join("");
       const src = T(r.source === "selection" ? "rephraseSelection" : r.source === "paragraph" ? "rephraseParagraph" : "rephraseAll");
       let body = `<div class="note">${esc(src)}</div><div class="tones">${tones}</div>`;
@@ -427,7 +423,7 @@
       } else if (r.state === "error") {
         body += `<div class="err">${esc(T("rephraseError_" + (r.code || "api")) || r.message)}</div>
           <button class="primary" data-a="rephrase">${esc(T("retry"))}</button>`;
-        if (r.code === "auth" || r.code === "no_key") body += ` <button class="link" data-a="options">${esc(T("configure"))}</button>`;
+        if (["auth", "no_key", "no_provider", "unavailable", "bad_request", "ollama_origin", "ollama_model"].includes(r.code)) body += ` <button class="link" data-a="options">${esc(T("configure"))}</button>`;
       } else if (r.state === "done" && r.result) {
         const res = r.result;
         const blocks = [];
@@ -447,7 +443,12 @@
             </div>` : ""}
           </div>`).join("");
         this._blocks = blocks;
-        body += `<div class="row" style="display:flex;justify-content:flex-end;margin-top:8px"><button class="link" data-a="rephrase">↻ ${esc(T("again"))}</button></div>`;
+        if (res.local) {
+          body += `<div class="res"><div class="lbl">🪄 ${esc(T("freeAiTitle"))}</div>
+            <div class="sub">${esc(T("freeAiHelp"))}</div>
+            <div class="row"><button class="chip" data-a="options">${esc(T("configure"))}</button></div></div>`;
+        }
+        if (!res.local) body += `<div class="row" style="display:flex;justify-content:flex-end;margin-top:8px"><button class="link" data-a="rephrase">↻ ${esc(T("again"))}</button></div>`;
       }
       return body;
     }

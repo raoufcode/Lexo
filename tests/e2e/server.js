@@ -37,6 +37,32 @@ function start(port = 0) {
       });
       return;
     }
+    // Faux Ollama (reformulations)
+    if (req.url === "/api/tags") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ models: [{ name: "mistral:latest" }] }));
+      return;
+    }
+    if (req.method === "POST" && req.url === "/api/chat") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const p = JSON.parse(body);
+        const text = (p.messages[1].content.match(/<text>\n([\s\S]*)\n<\/text>/) || [])[1] || "";
+        const corrected = text.replace(/\baller\b/g, "allé").replace(/\bmarcher\b/g, "marché");
+        const content = JSON.stringify({
+          language: "fr", corrected, explanation: "Participe passé et nom corrigés.",
+          suggestions: [
+            { label: "Formel", text: "Je me suis rendu au marché hier." },
+            { label: "Concis", text: "Hier, marché." },
+            { label: "Amical", text: "Hier, j'ai fait un tour au marché !" },
+          ],
+        });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ model: p.model, message: { role: "assistant", content }, done: true }));
+      });
+      return;
+    }
     const file = path.join(__dirname, "page.html");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(fs.readFileSync(file));

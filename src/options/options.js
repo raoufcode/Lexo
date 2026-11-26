@@ -134,7 +134,7 @@
     overrideKeys.forEach((k) => { override[k] = settings[k]; });
     try {
       const r = await ext.runtime.sendMessage({ type, override });
-      if (r && r.ok) { out.textContent = t("o_ok") + (r.model ? " — " + r.model : ""); out.className = "ok"; }
+      if (r && r.ok) { out.textContent = t("o_ok") + " — " + [r.provider && t("o_provider_" + r.provider).split(" (")[0], r.model].filter(Boolean).join(" · "); out.className = "ok"; }
       else { out.textContent = t("o_fail", (r && (r.code || r.status || r.message)) || "?"); out.className = "ko"; }
     } catch (e) {
       out.textContent = t("o_fail", e.message); out.className = "ko";
@@ -143,7 +143,52 @@
     }
   }
   $("testLt").addEventListener("click", () => runTest($("testLt"), $("testLtRes"), "lexo:test-lt", ["ltServer", "ltUsername", "ltApiKey"]));
-  $("testClaude").addEventListener("click", () => runTest($("testClaude"), $("testClaudeRes"), "lexo:test-claude", ["claudeApiKey", "claudeModel", "claudeEffort"]));
+  const REPHRASE_KEYS = ["rephraseProvider", "geminiApiKey", "geminiModel", "ollamaUrl", "ollamaModel", "claudeApiKey", "claudeModel", "claudeEffort"];
+  $("testRephrase").addEventListener("click", async () => {
+    await runTest($("testRephrase"), $("testRephraseRes"), "lexo:test-rephrase", REPHRASE_KEYS);
+    refreshStatus();
+  });
+
+  // État des fournisseurs (lequel est prêt ?)
+  async function refreshStatus() {
+    const override = {};
+    REPHRASE_KEYS.forEach((k) => { override[k] = settings[k]; });
+    let st = {};
+    try { st = (await ext.runtime.sendMessage({ type: "lexo:rephrase-status", override })).status || {}; } catch (e) { /* ignore */ }
+    const ul = $("providerStatus");
+    ul.textContent = "";
+    for (const id of ["gemini", "ollama", "chrome", "claude"]) {
+      const li = document.createElement("li");
+      li.className = st[id] ? "on" : "";
+      li.textContent = (st[id] ? "✔ " : "○ ") + t("o_provider_" + id).split(" (")[0];
+      li.title = t(st[id] ? "o_ready" : "o_not_ready");
+      ul.appendChild(li);
+    }
+  }
+  let statusTimer = 0;
+  LexoSettings.onChange((patch) => {
+    if (Object.keys(patch).some((k) => REPHRASE_KEYS.includes(k))) {
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(refreshStatus, 600);
+    }
+  });
+
+  // Modèles Ollama installés
+  async function loadOllamaModels() {
+    const dl = $("ollamaModels");
+    try {
+      const r = await ext.runtime.sendMessage({ type: "lexo:ollama-models", override: { ollamaUrl: settings.ollamaUrl } });
+      dl.textContent = "";
+      (r && r.models || []).forEach((m) => dl.appendChild(new Option(m, m)));
+      if (r && r.ok && r.models.length && !r.models.some((m) => m.split(":")[0] === String(settings.ollamaModel).split(":")[0])) {
+        $("ollamaModel").value = r.models[0];
+        save({ ollamaModel: r.models[0] });
+      }
+    } catch (e) { /* Ollama absent */ }
+  }
+  $("ollamaRefresh").addEventListener("click", () => { loadOllamaModels(); refreshStatus(); });
+  refreshStatus();
+  loadOllamaModels();
 
   $("reset").addEventListener("click", async () => {
     if (!confirm(t("o_reset_confirm"))) return;

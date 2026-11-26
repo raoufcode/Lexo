@@ -28,7 +28,15 @@
     ltServer: "https://api.languagetool.org",
     ltUsername: "",
     ltApiKey: "",
-    /** Reformulations (Claude). */
+    /** Reformulations : "auto" | "chrome" | "gemini" | "ollama" | "claude". */
+    rephraseProvider: "auto",
+    /** Google Gemini (palier gratuit). */
+    geminiApiKey: "",
+    geminiModel: "gemini-flash-latest",
+    /** Ollama (local, gratuit). */
+    ollamaUrl: "http://localhost:11434",
+    ollamaModel: "mistral",
+    /** Claude (payant). */
     claudeApiKey: "",
     claudeModel: "claude-opus-5-5",
     claudeEffort: "low",
