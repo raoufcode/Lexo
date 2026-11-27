@@ -93,32 +93,45 @@
   }
 
   /**
-   * Choisit la langue d'un texte. `hint` : dernière langue connue du champ.
-   * Ordre : détecteur du navigateur fiable > mots-outils > indice > défaut.
+   * Choisit la langue d'un texte parmi les langues autorisées (par défaut
+   * français et anglais). `hint` : dernière langue connue du champ.
    */
-  async function detectLanguage(text, hint, fallback) {
+  async function detectLanguage(text, hint, fallback, allowed) {
+    const list = (allowed && allowed.length ? allowed : LexoLang.allCodes()).map(LexoLang.base);
+    const ok = (l) => !!l && list.includes(l);
     const sample = text.length > 3000 ? text.slice(0, 3000) : text;
     const letters = (sample.match(/\p{L}/gu) || []).length;
-    const local = LexoLang.guess(sample);
+    const keep = ok(hint) ? hint : ok(fallback) ? fallback : list[0];
+    if (list.length === 1) return { lang: list[0], sure: true };
+
+    const local = LexoLang.guessAmong(sample, list);
+    const frEnOnly = list.every((l) => l === "fr" || l === "en");
+
+    if (frEnOnly) {
+      // Détecteur spécialisé : fiable dès quelques mots, même avec des fautes.
+      if (local.lang && local.confidence >= 0.3) return { lang: local.lang, sure: local.confidence >= 0.55 };
+      if (letters >= 12) {
+        const cld = await detectCLD(sample);
+        if (cld && ok(cld.lang) && cld.pct >= 50) return { lang: cld.lang, sure: false };
+      }
+      return { lang: keep, sure: false };
+    }
 
     // Texte très court : on privilégie la continuité (langue précédente).
     if (letters < 12) {
       if (local.lang && local.confidence >= 0.75) return { lang: local.lang, sure: false };
-      return { lang: hint || fallback, sure: false };
+      return { lang: keep, sure: false };
     }
-
     const cld = await detectCLD(sample);
-    if (cld && cld.reliable && cld.pct >= 60 && cld.lang && cld.lang !== "und") {
-      // Sur un texte moyen, si les mots-outils désignent clairement une autre
-      // langue, on les écoute (CLD se trompe parfois sur fr/it/es).
-      if (letters < 60 && local.lang && local.lang !== cld.lang && local.confidence >= 0.7) {
+    if (cld && cld.reliable && cld.pct >= 60 && ok(cld.lang)) {
+      if (letters < 60 && ok(local.lang) && local.lang !== cld.lang && local.confidence >= 0.7) {
         return { lang: local.lang, sure: true };
       }
       return { lang: cld.lang, sure: true };
     }
-    if (local.lang && local.confidence >= 0.35) return { lang: local.lang, sure: local.confidence >= 0.6 };
-    if (cld && cld.lang && cld.lang !== "und" && cld.pct >= 80) return { lang: cld.lang, sure: false };
-    return { lang: hint || fallback, sure: false };
+    if (ok(local.lang) && local.confidence >= 0.35) return { lang: local.lang, sure: local.confidence >= 0.6 };
+    if (cld && ok(cld.lang) && cld.pct >= 80) return { lang: cld.lang, sure: false };
+    return { lang: keep, sure: false };
   }
 
   // ---------------------------------------------------------------------------
@@ -152,7 +165,7 @@
       if (forced) {
         docLang = LexoLang.base(forced); sure = true;
       } else {
-        const d = await detectLanguage(text, req.hint, fallback);
+        const d = await detectLanguage(text, req.hint, fallback, settings.autoLanguages);
         docLang = d.lang; sure = d.sure;
       }
 
@@ -171,11 +184,13 @@
       const plan = [];
       for (const p of paragraphs) {
         let lang = docLang;
-        if (!forced && p.text.length >= 60 && paragraphs.length > 1) {
-          const lk = LexoText.hash(p.text) + ":" + p.text.length;
+        // Langue par paragraphe : dès 20 caractères entre fr/en (détecteur fiable).
+        const frEn = (settings.autoLanguages || []).length && settings.autoLanguages.every((l) => l === "fr" || l === "en");
+        if (!forced && p.text.length >= (frEn ? 20 : 60) && paragraphs.length > 1) {
+          const lk = LexoText.hash(p.text) + ":" + p.text.length + ":" + (settings.autoLanguages || []).join(",");
           let pl = this.langCache.get(lk);
           if (pl === undefined) {
-            const d = await detectLanguage(p.text, docLang, docLang);
+            const d = await detectLanguage(p.text, docLang, docLang, settings.autoLanguages);
             pl = d.sure ? d.lang : docLang;
             this.langCache.set(lk, pl);
           }

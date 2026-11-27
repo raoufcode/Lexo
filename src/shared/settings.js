@@ -13,6 +13,8 @@
     uiLanguage: "fr",
     /** "auto" : détection automatique ; sinon code de langue forcé. */
     language: "auto",
+    /** Langues entre lesquelles la détection automatique choisit. */
+    autoLanguages: ["fr", "en"],
     /** Langue utilisée quand la détection est incertaine. */
     defaultLanguage: "fr",
     /** Variantes préférées par langue de base. */

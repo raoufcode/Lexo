@@ -78,7 +78,31 @@
     $("debounceVal").textContent = settings.debounceMs + " ms";
   }
 
+  // Langues de la détection automatique
+  function renderAutoLanguages() {
+    const box = $("autoLanguages");
+    box.textContent = "";
+    const chosen = new Set(settings.autoLanguages && settings.autoLanguages.length ? settings.autoLanguages : ["fr", "en"]);
+    for (const c of codes) {
+      const label = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = chosen.has(c);
+      cb.addEventListener("change", () => {
+        const next = codes.filter((x) => (x === c ? cb.checked : chosen.has(x)));
+        if (!next.length) { cb.checked = true; return; } // au moins une langue
+        chosen.clear(); next.forEach((x) => chosen.add(x));
+        save({ autoLanguages: next });
+      });
+      const span = document.createElement("span");
+      span.textContent = LexoLang.name(c);
+      label.append(cb, span);
+      box.appendChild(label);
+    }
+  }
+
   function fillAll() {
+    renderAutoLanguages();
     fillLangs($("language"), true);
     fillLangs($("defaultLanguage"), false);
     $("language").value = settings.language;

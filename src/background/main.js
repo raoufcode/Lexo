@@ -13,7 +13,7 @@
   let settingsPromise = LexoSettings.load();
   LexoSettings.onChange((patch) => {
     settingsPromise = LexoSettings.load();
-    const affectsCache = ["ltServer", "ltApiKey", "ltUsername", "variants", "level", "defaultLanguage"];
+    const affectsCache = ["ltServer", "ltApiKey", "ltUsername", "variants", "level", "defaultLanguage", "autoLanguages"];
     if (Object.keys(patch).some((k) => affectsCache.includes(k))) checker.clearCache();
     if ("ollamaUrl" in patch) LexoRephrase.resetProbe();
   });

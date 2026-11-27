@@ -138,3 +138,29 @@ test("cleanReplacements écarte les suggestions absurdes mais garde les marques"
   assert.deepEqual(v("youtube", ["YouTube"]), ["YouTube"]);
   assert.deepEqual(v("ios", ["iOS"]), ["iOS"]);
 });
+
+test("détection limitée au français et à l'anglais (par défaut)", async () => {
+  const log = [];
+  G.fetch = mockFetch({}, log);
+  const c = new Checker();
+  // Phrase française pleine de fautes : jamais prise pour une autre langue
+  let r = await c.check({ text: "JE co,stete que le mail na' pas éte envoye cotecteme,nt.", fieldId: 1, seq: 1 }, settings());
+  assert.equal(r.lang, "fr");
+  // Phrase anglaise courte
+  r = await c.check({ text: "thx for ur help", fieldId: 2, seq: 1, hint: "fr" }, settings());
+  assert.equal(r.lang, "en");
+  // Langue précédente conservée si le texte est indécidable
+  r = await c.check({ text: "OK 10h", fieldId: 3, seq: 1, hint: "en" }, settings());
+  assert.equal(r.lang, "en");
+});
+
+test("e-mail mixte : chaque paragraphe dans sa langue (fr/en)", async () => {
+  const log = [];
+  G.fetch = mockFetch({}, log);
+  const text = "Bonjour Paul,\nJe t'envoie le rapport demain matin.\nThanks a lot for your help yesterday!";
+  const r = await new Checker().check({ text, fieldId: 4, seq: 1 }, settings());
+  assert.equal(r.lang, "fr");
+  const byLang = Object.fromEntries(log.map((l) => [l.language, l.text]));
+  assert.match(byLang["en-US"], /Thanks a lot/);
+  assert.match(byLang.fr, /Je t'envoie le rapport/);
+});

@@ -621,7 +621,7 @@
       this.text = text;
       this.anchor = anchor;
       this.state = { state: "idle", tone: app.lastTone || "neutral" };
-      this.lang = LexoLang.guess(text).lang || app.settings.defaultLanguage;
+      this.lang = LexoLang.guessAmong(text, app.settings.autoLanguages).lang || app.settings.defaultLanguage;
     }
     model() {
       return {
@@ -734,7 +734,7 @@
       if (Object.keys(patch).some((k) => aiKeys.includes(k))) { this.aiBlockedUntil = 0; this.aiCache.clear(); }
       if ("uiLanguage" in patch) LexoI18n.setLang(this.settings.uiLanguage);
       if (!this.enabledHere) { this.teardown(); return; }
-      const recheck = ["dictionary", "disabledRules", "level", "language", "defaultLanguage", "variants", "ltServer", "ltApiKey", "ltUsername"];
+      const recheck = ["dictionary", "disabledRules", "level", "language", "defaultLanguage", "autoLanguages", "variants", "ltServer", "ltApiKey", "ltUsername"];
       if (Object.keys(patch).some((k) => recheck.includes(k)) && this.active) {
         this.active.scheduleCheck(true);
       }

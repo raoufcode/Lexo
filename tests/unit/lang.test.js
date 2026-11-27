@@ -39,3 +39,24 @@ test("toLT: variantes et préférences", () => {
   assert.equal(L.isSupported("fr-CA"), true);
   assert.equal(L.name("fr"), "Français");
 });
+
+test("français / anglais : phrases courtes, style SMS et fautes de frappe", () => {
+  const cases = [
+    ["Hi, how are you?", "en"], ["thx for ur help", "en"], ["See you tomorrow", "en"], ["I cant come today sorry", "en"],
+    ["ok merci", "fr"], ["Bonne journée", "fr"], ["c'est noté", "fr"], ["Le meeting est à 10h", "fr"],
+    ["JE co,stete que le mail na' pas éte envoye cotecteme,nt.", "fr"], ["Bonjour, comme àa va ?", "fr"],
+    ["dsl jsp si je peux venir", "fr"], ["let me know", "en"], ["on se voit demain", "fr"],
+    ["Can you send me the file?", "en"], ["Tu peux m'envoyer le fichier ?", "fr"], ["Yes", "en"], ["Oui", "fr"],
+    ["Good morning everyone", "en"], ["Salut tout le monde", "fr"], ["please find attached the report", "en"],
+    ["veuillez trouver ci-joint le rapport", "fr"], ["it's fine", "en"], ["à quelle heure", "fr"],
+    ["I recieve teh email yesterday", "en"], ["jai pas recu ton mesage", "fr"], ["Nice to meet you", "en"],
+  ];
+  for (const [t, exp] of cases) assert.equal(L.frenchOrEnglish(t).lang, exp, t);
+});
+
+test("guessAmong : seules les langues autorisées sont proposées", () => {
+  // Texte espagnol, mais seuls fr/en autorisés : jamais « es »
+  assert.ok(["fr", "en", null].includes(L.guessAmong("Hola, ¿cómo estás? Muy bien gracias", ["fr", "en"]).lang));
+  assert.equal(L.guessAmong("Hola, ¿cómo estás? Yo estoy muy bien, gracias por preguntar", ["fr", "en", "es"]).lang, "es");
+  assert.equal(L.guessAmong("n'importe quoi", ["fr"]).lang, "fr");
+});
