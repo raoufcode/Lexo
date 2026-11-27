@@ -54,6 +54,11 @@
     document.querySelectorAll("[data-key]").forEach((el) => {
       const key = el.getAttribute("data-key");
       const num = el.getAttribute("data-type") === "number";
+      if (el.getAttribute("data-type") === "bool") {
+        el.checked = settings[key] !== false;
+        el.addEventListener("change", () => save({ [key]: el.checked }));
+        return;
+      }
       el.value = settings[key] != null ? settings[key] : "";
       const handler = () => {
         let v = el.value;

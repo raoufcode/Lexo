@@ -134,3 +134,34 @@ test("parseJson tolère un bloc de code", () => {
   assert.deepEqual(parseJson('Voici :\n```json\n{"a":1}\n```'), { a: 1 });
   assert.throws(() => parseJson("pas de json"), (e) => e.code === "parse");
 });
+
+test("correction intelligente (aiFix) : un seul appel, corrections mot à mot, cache", async () => {
+  const log = net({
+    gemini: (url, init, reply) => {
+      const body = JSON.parse(init.body);
+      assert.match(body.systemInstruction.parts[0].text, /proofreader/);
+      assert.equal(body.generationConfig.responseSchema.properties.paragraphs.type, "ARRAY");
+      return reply(200, { candidates: [{ content: { parts: [{ text: JSON.stringify({ paragraphs: [
+        "Je constate que le mail n'a pas été envoyé correctement.", "Bonjour,",
+      ] }) }] } }] });
+    },
+  });
+  const s = S({ geminiApiKey: "k" });
+  const paras = ["JE co,stete que le mail na' pas éte envoye cotecteme,nt.", "Bonjour,"];
+  const r = await G.LexoRephrase.aiFix(paras, "fr", s);
+  assert.equal(r.provider, "gemini");
+  const m = r.results[0].matches;
+  assert.deepEqual(m.map((x) => [paras[0].substr(x.offset, x.length), x.replacements[0].value]).slice(0, 2), [["JE", "Je"], ["co,stete", "constate"]]);
+  assert.equal(m.length, 6);
+  assert.ok(m.every((x) => x.rule.id === "LEXO_AI" && x.source === "ai"));
+  assert.deepEqual(r.results[1].matches, []);
+  const calls = log.filter((l) => l.url.includes("generativelanguage")).length;
+  await G.LexoRephrase.aiFix(paras, "fr", s); // depuis le cache
+  assert.equal(log.filter((l) => l.url.includes("generativelanguage")).length, calls);
+});
+
+test("aiFix : une réécriture complète est ignorée (garde-fou)", async () => {
+  net({ gemini: (u, i, reply) => reply(200, { candidates: [{ content: { parts: [{ text: '{"paragraphs":["Un tout autre texte qui n\'a strictement rien à voir avec l\'original, beaucoup plus long."]}' }] } }] }) });
+  const r = await G.LexoRephrase.aiFix(["Salut ca va"], "fr", S({ geminiApiKey: "k2" }));
+  assert.deepEqual(r.results[0].matches, []);
+});

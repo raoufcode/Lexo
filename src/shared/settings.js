@@ -28,6 +28,8 @@
     ltServer: "https://api.languagetool.org",
     ltUsername: "",
     ltApiKey: "",
+    /** Correction intelligente par IA des paragraphes fautifs (si une IA est configurée). */
+    aiCorrection: true,
     /** Reformulations : "auto" | "chrome" | "gemini" | "ollama" | "claude". */
     rephraseProvider: "auto",
     /** Google Gemini (palier gratuit). */

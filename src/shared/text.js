@@ -157,6 +157,64 @@
     return per;
   }
 
+  /**
+   * Compare un paragraphe et sa version corrigée (par l'IA) et renvoie les
+   * différences mot à mot, au format des erreurs Lexo (décalages dans `orig`).
+   * Exemple : « JE co,stete » / « Je constate » -> [JE→Je, co,stete→constate].
+   */
+  function diffToEdits(orig, fixed, maxTokens = 600) {
+    if (orig === fixed) return [];
+    const A = orig.match(/\s+|[^\s]+/g) || [];
+    const B = fixed.match(/\s+|[^\s]+/g) || [];
+    if (A.length > maxTokens || B.length > maxTokens) return [];
+    // LCS sur les jetons
+    const n = A.length, m = B.length;
+    const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) {
+        L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+      }
+    }
+    const pos = [0];
+    for (const t of A) pos.push(pos[pos.length - 1] + t.length);
+    const hunks = [];
+    let i = 0, j = 0;
+    while (i < n || j < m) {
+      if (i < n && j < m && A[i] === B[j]) { i++; j++; continue; }
+      const i0 = i, j0 = j;
+      while ((i < n || j < m) && !(i < n && j < m && A[i] === B[j])) {
+        if (j >= m || (i < n && L[i + 1][j] >= L[i][j + 1])) i++; else j++;
+      }
+      hunks.push({ i0, i1: i, j0, j1: j });
+    }
+    const edits = [];
+    for (const h of hunks) {
+      let start = pos[h.i0], end = pos[h.i1];
+      let repl = B.slice(h.j0, h.j1).join("");
+      let from = orig.slice(start, end);
+      // Changement d'espaces uniquement : ignoré (géré par les règles locales).
+      if (!from.trim() && !repl.trim()) continue;
+      // Insertion pure : on l'accroche au mot précédent (ou suivant).
+      if (start === end) {
+        if (h.i0 > 0 && /\S/.test(A[h.i0 - 1])) { start = pos[h.i0 - 1]; repl = A[h.i0 - 1] + repl; }
+        else if (h.i0 > 1 && /\S/.test(A[h.i0 - 2])) { start = pos[h.i0 - 2]; repl = A[h.i0 - 2] + A[h.i0 - 1] + repl; }
+        else if (h.i0 < n && /\S/.test(A[h.i0])) { end = pos[h.i0 + 1]; repl = repl + A[h.i0]; }
+        else continue;
+        from = orig.slice(start, end);
+      }
+      // Espaces en bordure : exclus du soulignement.
+      while (from && /\s/.test(from[0]) && repl && /\s/.test(repl[0])) { from = from.slice(1); repl = repl.slice(1); start++; }
+      while (from && /\s/.test(from[from.length - 1]) && repl && /\s/.test(repl[repl.length - 1])) { from = from.slice(0, -1); repl = repl.slice(0, -1); end--; }
+      // Ponctuation commune en bordure (« envoye. » -> « envoyé. ») : exclue.
+      while (from.length > 1 && repl.length > 1 && from[from.length - 1] === repl[repl.length - 1] && /[^\p{L}\p{N}]/u.test(from[from.length - 1])) {
+        from = from.slice(0, -1); repl = repl.slice(0, -1); end--;
+      }
+      if (from === repl || !from) continue;
+      edits.push({ offset: start, length: from.length, from, to: repl });
+    }
+    return edits;
+  }
+
   /** Mot (lettres, chiffres, apostrophes, tirets) autour d'une position. */
   function wordAt(text, offset, length) {
     return text.substr(offset, length);
@@ -171,7 +229,7 @@
 
   const LexoText = {
     splitParagraphs, hash, diff, remapMatches, buildBatches,
-    splitBatchMatches, wordAt, escapeHtml, SEP,
+    splitBatchMatches, wordAt, escapeHtml, diffToEdits, SEP,
   };
   root.LexoText = LexoText;
   if (typeof module !== "undefined" && module.exports) module.exports = LexoText;

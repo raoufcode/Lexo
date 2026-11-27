@@ -35,6 +35,12 @@
         } catch (e) {
           return { ok: false, code: e.code || "api", message: e.message };
         }
+      case "lexo:ai-fix":
+        try {
+          return Object.assign({ ok: true }, await LexoRephrase.aiFix(msg.paragraphs || [], msg.lang, settings));
+        } catch (e) {
+          return { ok: false, code: e.code || "api", message: e.message };
+        }
       case "lexo:test-rephrase":
         try {
           const s = Object.assign({}, settings, msg.override || {});

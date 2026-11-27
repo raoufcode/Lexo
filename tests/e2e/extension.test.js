@@ -96,6 +96,8 @@ test("le soulignement suit la frappe sans attendre le serveur", async () => {
   await page.keyboard.press("Home");
   await page.keyboard.type("Hier, ");
   // immédiatement (sans réponse serveur), les soulignements se sont décalés
+  // deux images d'affichage (≈ 30 ms), bien avant toute réponse du serveur
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const after = await underlines(page);
   assert.equal(after.length, 2);
   assert.ok(after[0].x > before[0].x + 20);
@@ -197,6 +199,35 @@ test("reformulation gratuite avec Ollama : proposer puis remplacer", async () =>
     // « Remplacer » sous la variante « Formel » (2e bloc)
     await page.evaluate(() => document.querySelector("lexo-ui").shadowRoot.querySelectorAll('[data-a="use"]')[1].click());
     await page.waitForFunction(() => document.querySelector("#ta").value === "Je me suis rendu au marché hier.");
+    await page.close();
+  } finally {
+    await sw.evaluate(() => chrome.storage.local.set({ ollamaUrl: "http://localhost:11434" }));
+  }
+});
+
+test("correction intelligente par IA : phrase très mal tapée (cas réel Gmail)", async () => {
+  await sw.evaluate((url) => chrome.storage.local.set({ ollamaUrl: url }), `http://127.0.0.1:${srv.port}`);
+  try {
+    const page = await openPage();
+    await page.evaluate(() => {
+      document.querySelector("#ce").innerHTML = "<div>Bonjour,</div><div><br></div><div>JE co,stete que le mail na' pas éte envoye cotecteme,nt.</div>";
+    });
+    await page.click("#ce");
+    // L'IA relit la phrase fautive : 6 corrections, dont « co,stete » -> « constate »
+    await page.waitForFunction(() => {
+      const sr = document.querySelector("lexo-ui")?.shadowRoot;
+      return sr && Array.from(sr.querySelectorAll(".u")).filter((u) => u.style.display !== "none").length === 6;
+    }, null, { timeout: 10000 });
+    await page.evaluate(() => document.querySelector("lexo-ui").shadowRoot.querySelector(".badge").click());
+    await page.waitForFunction(() => /constate/.test(document.querySelector("lexo-ui").shadowRoot.querySelector(".panel")?.innerText || ""));
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: path.join(SHOTS, "7-ai-fix-panel.png") });
+    await page.evaluate(() => document.querySelector("lexo-ui").shadowRoot.querySelector('[data-a="all"]').click());
+    await page.waitForFunction(() => document.querySelector("#ce").innerText.includes("correctement"));
+    assert.equal(
+      (await page.innerText("#ce")).trim().split("\n").filter(Boolean).pop(),
+      "Je constate que le mail n'a pas été envoyé correctement."
+    );
     await page.close();
   } finally {
     await sw.evaluate(() => chrome.storage.local.set({ ollamaUrl: "http://localhost:11434" }));

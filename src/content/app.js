@@ -162,7 +162,7 @@
       if (cur !== text) ms = LexoText.remapMatches(ms, text, cur);
       ms = ms.filter((m) => !this.ignored.has(ignoreKey(m)));
       this.text = cur;
-      this.matches = ms;
+      this.matches = this.mergeAI(ms, cur);
       this.status = res.status || "ok";
       if (res.lang) { this.lang = res.lang; this.langSure = !!res.sure; }
       if (this.status === "rate_limited") {
@@ -171,6 +171,72 @@
       }
       this.layout();
       if (this.panel) this.renderPanel();
+      this.scheduleAI();
+    }
+
+    // ------------------------------------------------------------ IA
+    /** Paragraphes contenant des fautes et pas encore relus par l'IA. */
+    aiCandidates() {
+      const out = [];
+      for (const p of LexoText.splitParagraphs(this.text)) {
+        if (p.text.trim().length < 6) continue;
+        if (this.app.aiCache.has(aiKey(p.text))) continue;
+        const end = p.start + p.text.length;
+        const faulty = this.matches.some((m) => m.source !== "ai" && m.type !== "style" && m.offset >= p.start && m.offset < end);
+        if (faulty) out.push(p);
+      }
+      return out.slice(0, 6);
+    }
+
+    scheduleAI() {
+      clearTimeout(this.aiTimer);
+      if (!this.app.aiEnabled()) return;
+      if (!this.aiCandidates().length) return;
+      // Après une vraie pause de frappe, pour économiser le quota gratuit.
+      this.aiTimer = setTimeout(() => this.aiCheck(), 1400);
+    }
+
+    /** Relecture des paragraphes fautifs par l'IA (comprend les phrases mal tapées). */
+    async aiCheck() {
+      if (!this.app.aiEnabled() || this.aiBusy) return this.aiBusy;
+      const want = this.aiCandidates();
+      if (!want.length) return;
+      this.aiBusy = (async () => {
+        this.layoutBadge();
+        const res = await this.app.send({ type: "lexo:ai-fix", paragraphs: want.map((p) => p.text), lang: this.lang });
+        if (!res || !res.ok) {
+          this.app.aiFailed(res && res.code);
+          return;
+        }
+        want.forEach((p, i) => this.app.aiCacheSet(aiKey(p.text), (res.results[i] && res.results[i].matches) || []));
+        const cur = this.adapter.getText();
+        this.matches = this.mergeAI(LexoText.remapMatches(this.matches, this.text, cur), cur);
+        this.text = cur;
+        this.layout();
+        if (this.panel) this.renderPanel();
+      })().finally(() => { this.aiBusy = null; this.layoutBadge(); });
+      return this.aiBusy;
+    }
+
+    /** Intègre les corrections de l'IA : elles priment sur celles qu'elles recouvrent. */
+    mergeAI(ms, text) {
+      let out = ms;
+      const disabled = new Set(this.app.settings.disabledRules || []);
+      const dict = new Set((this.app.settings.dictionary || []).map((w) => w.toLowerCase()));
+      for (const p of LexoText.splitParagraphs(text)) {
+        const ai = this.app.aiCache.get(aiKey(p.text));
+        if (!ai) continue;
+        const start = p.start, end = p.start + p.text.length;
+        const abs = ai.map((m) => Object.assign({}, m, {
+          offset: m.offset + start,
+          context: p.text.substr(m.offset, m.length),
+          type: typeOf(m),
+        })).filter((m) => !this.ignored.has(ignoreKey(m)) && !disabled.has(m.rule.id) && !dict.has(m.context.toLowerCase()));
+        const overlap = (a, b) => a.offset < b.offset + b.length && b.offset < a.offset + a.length;
+        out = out.filter((m) => !(m.offset >= start && m.offset < end && (m.source === "ai" || abs.some((a) => overlap(a, m)))));
+        out = out.concat(abs);
+      }
+      return out.sort((a, b) => a.offset - b.offset);
     }
 
     // ------------------------------------------------------------ rendu
@@ -209,7 +275,7 @@
         left: clip.left, top: clip.top, right: clip.left + clip.width, bottom: clip.top + clip.height,
         height: box.height,
       }, {
-        count, worst, status: this.status, checking: this.checking,
+        count, worst, status: this.status, checking: this.checking || !!this.aiBusy,
         empty: !this.text.trim(), langLabel, forceShow: !!this.panel,
         title: T("badgeTitle", (this.lang ? LexoLang.name(this.lang) + " · " : "") + state),
       }, () => this.togglePanel());
@@ -290,7 +356,13 @@
       return ok;
     }
 
-    applyAll() {
+    async applyAll() {
+      // Avant de tout corriger, on laisse l'IA relire les phrases fautives :
+      // c'est elle qui comprend « co,stete » -> « constate ».
+      if (this.app.aiEnabled() && (this.aiCandidates().length || this.aiBusy)) {
+        clearTimeout(this.aiTimer);
+        try { await Promise.race([this.aiBusy || this.aiCheck(), new Promise((r) => setTimeout(r, 12000))]); } catch (e) { /* on continue sans IA */ }
+      }
       const list = this.matches
         .filter((m) => m.replacements && m.replacements.length)
         .sort((a, b) => b.offset - a.offset);
@@ -421,7 +493,7 @@
         tab: (v) => { this.panel.tab = v; if (v === "rephrase") this.panel.source = this.panel.source.text ? this.panel.source : this.rephraseSource(); this.renderPanel(); },
         apply: (i) => { const m = this.matches[i]; if (m) this.apply(m, 0); this.renderPanel(); },
         ignore: (i) => { const m = this.matches[i]; if (m) this.ignore(m); },
-        applyAll: () => { this.applyAll(); this.renderPanel(); },
+        applyAll: async () => { await this.applyAll(); this.renderPanel(); },
         hover: (i) => { if (i !== this.panelHover) { this.panelHover = i; this.layout(); } },
         langMenu: (open) => { this.panel.langMenu = open; this.renderPanel(); },
         lang: (v) => { this.panel.langMenu = false; this.setLanguage(v); this.renderPanel(); },
@@ -505,6 +577,8 @@
     const known = ["empty", "too_long", "no_key", "no_provider", "unavailable", "ollama_origin", "ollama_model", "auth", "rate_limited", "bad_request", "offline", "api", "refusal", "parse", "sdk_missing", "internal", "context"];
     return known.includes(code) ? code : "api";
   }
+
+  function aiKey(text) { return LexoText.hash(text) + ":" + text.length; }
 
   function ignoreKey(m) { return (m.rule && m.rule.id) + "|" + m.context; }
 
@@ -594,6 +668,8 @@
       this.controllers = new Map();
       this.active = null;
       this.readonly = null;
+      this.aiCache = new Map();
+      this.aiBlockedUntil = 0;
       this.alive = true;
       this.frame = 0;
       this.pointer = null;
@@ -636,8 +712,26 @@
       return this.ui;
     }
 
+    /** La correction par IA est-elle utilisable maintenant ? */
+    aiEnabled() {
+      return this.settings.aiCorrection !== false && Date.now() >= this.aiBlockedUntil;
+    }
+
+    aiFailed(code) {
+      // Aucun service configuré : on n'insiste pas avant un changement de réglages.
+      const wait = code === "no_provider" ? 10 * 60000 : code === "rate_limited" ? 60000 : 20000;
+      this.aiBlockedUntil = Date.now() + wait;
+    }
+
+    aiCacheSet(key, matches) {
+      this.aiCache.set(key, matches);
+      if (this.aiCache.size > 300) this.aiCache.delete(this.aiCache.keys().next().value);
+    }
+
     onSettings(patch) {
       Object.assign(this.settings, patch);
+      const aiKeys = ["aiCorrection", "rephraseProvider", "geminiApiKey", "geminiModel", "ollamaUrl", "ollamaModel", "claudeApiKey", "claudeModel"];
+      if (Object.keys(patch).some((k) => aiKeys.includes(k))) { this.aiBlockedUntil = 0; this.aiCache.clear(); }
       if ("uiLanguage" in patch) LexoI18n.setLang(this.settings.uiLanguage);
       if (!this.enabledHere) { this.teardown(); return; }
       const recheck = ["dictionary", "disabledRules", "level", "language", "defaultLanguage", "variants", "ltServer", "ltApiKey", "ltUsername"];

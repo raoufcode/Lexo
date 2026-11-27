@@ -3,7 +3,12 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const BAD = { aller: "allé", marcher: "marché", erreurr: "erreur", teh: "the", recieve: "receive" };
+const BAD = { aller: "allé", marcher: "marché", erreurr: "erreur", teh: "the", recieve: "receive", envoye: "envoyée", stete: "stète" };
+
+// Corrections « intelligentes » renvoyées par le faux Ollama (relecture IA).
+const AI_FIXES = {
+  "JE co,stete que le mail na' pas éte envoye cotecteme,nt.": "Je constate que le mail n'a pas été envoyé correctement.",
+};
 
 function check(body) {
   const p = new URLSearchParams(body);
@@ -48,6 +53,12 @@ function start(port = 0) {
       req.on("data", (c) => (body += c));
       req.on("end", () => {
         const p = JSON.parse(body);
+        if (/proofreader/.test(p.messages[0].content)) {
+          const paras = [...p.messages[1].content.matchAll(/<paragraph index="\d+">\n([\s\S]*?)\n<\/paragraph>/g)].map((m) => AI_FIXES[m[1]] || m[1]);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ model: p.model, message: { role: "assistant", content: JSON.stringify({ paragraphs: paras }) }, done: true }));
+          return;
+        }
         const text = (p.messages[1].content.match(/<text>\n([\s\S]*)\n<\/text>/) || [])[1] || "";
         const corrected = text.replace(/\baller\b/g, "allé").replace(/\bmarcher\b/g, "marché");
         const content = JSON.stringify({

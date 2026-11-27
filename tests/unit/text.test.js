@@ -80,3 +80,22 @@ test("buildBatches respecte la taille maximale", () => {
 test("escapeHtml", () => {
   assert.equal(T.escapeHtml(`<b a="1">'&`), "&lt;b a=&quot;1&quot;&gt;&#39;&amp;");
 });
+
+test("diffToEdits : phrase très mal tapée (cas réel)", () => {
+  const o = "JE co,stete que le mail na' pas éte envoye cotecteme,nt.";
+  const f = "Je constate que le mail n'a pas été envoyé correctement.";
+  const e = T.diffToEdits(o, f);
+  assert.deepEqual(e.map((x) => [o.substr(x.offset, x.length), x.to]), [
+    ["JE", "Je"], ["co,stete", "constate"], ["na'", "n'a"], ["éte", "été"], ["envoye", "envoyé"], ["cotecteme,nt", "correctement"],
+  ]);
+  // Appliquer toutes les corrections redonne exactement la phrase corrigée.
+  let out = o;
+  for (const x of e.slice().reverse()) out = out.slice(0, x.offset) + x.to + out.slice(x.offset + x.length);
+  assert.equal(out, f);
+});
+
+test("diffToEdits : insertion, texte identique, espaces seuls", () => {
+  assert.deepEqual(T.diffToEdits("Il manque mot ici.", "Il manque un mot ici.").map((x) => [x.from, x.to]), [["manque", "manque un"]]);
+  assert.deepEqual(T.diffToEdits("Tout va bien.", "Tout va bien."), []);
+  assert.deepEqual(T.diffToEdits("Bonjour  toi", "Bonjour toi"), []);
+});
